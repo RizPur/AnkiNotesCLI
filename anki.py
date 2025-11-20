@@ -207,6 +207,115 @@ def setup_french_model(anki_connect):
         return True
     return False
 
+def setup_general_model(anki_connect, model_name, field_names):
+    """Create a general-purpose note type for any course"""
+    if model_name in anki_connect.get_model_names():
+        logger.info(f"Model '{model_name}' already exists")
+        return False
+
+    logger.info(f"Creating Anki model: {model_name}")
+
+    # Create card template with all fields
+    front_template = "{{" + field_names[0] + "}}"  # First field on front
+
+    back_template = """{{FrontSide}}
+<hr id=answer>
+"""
+    # Add remaining fields to back
+    for field in field_names[1:]:
+        back_template += f"""{{{{#{field}}}}}
+<div class='{field.lower()}'>{{{{{field}}}}}</div>
+{{{{/{field}}}}}
+"""
+
+    css = """
+.card {
+    font-family: Arial, sans-serif;
+    font-size: 20px;
+    text-align: center;
+    color: #333;
+    background-color: #f9f9f9;
+    padding: 20px;
+}
+.term {
+    font-size: 32px;
+    font-weight: bold;
+    margin: 15px 0;
+    color: #2c3e50;
+}
+.translation, .explanation {
+    font-size: 24px;
+    color: #555;
+    margin: 10px 0;
+}
+.pronunciation {
+    font-size: 18px;
+    color: #7f8c8d;
+    font-style: italic;
+    margin: 8px 0;
+}
+.example {
+    font-size: 18px;
+    margin: 15px auto;
+    padding: 15px;
+    background-color: #ecf0f1;
+    border-left: 4px solid #3498db;
+    border-radius: 4px;
+    max-width: 600px;
+    text-align: left;
+}
+.example_explanation {
+    font-size: 16px;
+    color: #7f8c8d;
+    font-style: italic;
+    margin: 10px 0;
+}
+.notes {
+    font-size: 16px;
+    color: #666;
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #fff3cd;
+    border-radius: 4px;
+    max-width: 600px;
+    margin: 15px auto;
+}
+
+/* Night mode */
+.nightMode .card {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+}
+.nightMode .term {
+    color: #61dafb;
+}
+.nightMode .translation, .nightMode .explanation {
+    color: #b0b0b0;
+}
+.nightMode .example {
+    background-color: #2d2d2d;
+    border-left-color: #61dafb;
+}
+.nightMode .notes {
+    background-color: #3a3a2d;
+    color: #d0d0d0;
+}
+"""
+
+    card_template = {
+        "Name": "Card 1",
+        "Front": front_template,
+        "Back": back_template
+    }
+
+    anki_connect.create_model(
+        model_name=model_name,
+        in_order_fields=field_names,
+        card_templates=[card_template],
+        css=css
+    )
+    return True
+
 if __name__ == '__main__':
     # Example of how to use the AnkiConnect class
     logging.basicConfig(level=logging.INFO)

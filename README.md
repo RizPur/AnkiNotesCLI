@@ -1,4 +1,4 @@
-# Lang-Anki-CLI
+# AnkiNotesCLI
 
 **A general-purpose note-taking CLI tool with AI enrichment and Anki integration for spaced repetition learning.**
 
@@ -320,7 +320,7 @@ Contributions are welcome! Feel free to:
 - Report bugs
 - Suggest features
 - Submit pull requests
-- Share your custom AI prompts
+- Share custom AI prompts
 
 ## License
 

@@ -21,9 +21,10 @@ if env_path.exists():
 
 # AnkiConnect integration
 try:
-    from anki import AnkiConnect
+    from anki import AnkiConnect, setup_general_model
 except ImportError:
     AnkiConnect = None
+    setup_general_model = None
 
 # --- Configuration ---
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -70,8 +71,71 @@ def save_course_config(course_name, config):
         json.dump(config, f, indent=2, ensure_ascii=False)
 
 def sanitize_filename(name):
-    """Convert course name to safe filename"""
-    return name.lower().replace(" ", "_").replace("/", "_")
+    """Convert course name to safe filename, removing/replacing dangerous characters"""
+    import re
+    import unicodedata
+
+    # Normalize unicode characters (e.g., accented characters)
+    name = unicodedata.normalize('NFKD', name)
+
+    # Convert to lowercase and strip whitespace
+    name = name.lower().strip()
+
+    # Remove leading/trailing dots and spaces (security risk)
+    name = name.strip('. ')
+
+    # Replace spaces and common separators with underscores
+    name = re.sub(r'[\s\-/\\]+', '_', name)
+
+    # Remove any character that's not alphanumeric or underscore
+    # This prevents path traversal and special characters
+    name = re.sub(r'[^a-z0-9_]', '', name)
+
+    # Remove consecutive underscores
+    name = re.sub(r'_+', '_', name)
+
+    # Remove leading/trailing underscores
+    name = name.strip('_')
+
+    # Ensure we have a valid filename (not empty)
+    if not name:
+        name = "untitled_course"
+
+    # Limit length to prevent filesystem issues
+    if len(name) > 100:
+        name = name[:100]
+
+    return name
+
+def sanitize_course_name(name):
+    """Sanitize course name for display/Anki (less aggressive than filename)"""
+    import re
+
+    # Strip leading/trailing whitespace and dots
+    name = name.strip('. ')
+
+    # Remove path traversal attempts (..)
+    name = name.replace('..', '')
+
+    # Replace problematic characters but keep more for readability
+    # Remove characters that could cause issues in Anki or display
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '', name)
+
+    # Collapse multiple spaces into one
+    name = re.sub(r'\s+', ' ', name)
+
+    # Remove any remaining standalone dots with spaces
+    name = re.sub(r'\s*\.\s*', ' ', name)
+
+    # If empty after sanitization, use default
+    if not name.strip():
+        name = "Untitled Course"
+
+    # Limit length
+    if len(name) > 100:
+        name = name[:100]
+
+    return name.strip()
 
 def get_default_ai_prompt():
     """Default AI prompt template for general note-taking"""
@@ -127,7 +191,14 @@ Format your response as JSON with these fields:
 
 def cmd_course(args):
     """Set or create a new course"""
-    course_name = args.name
+    course_name_raw = args.name
+    course_name = sanitize_course_name(course_name_raw)
+
+    # Warn user if name was changed
+    if course_name != course_name_raw:
+        print(f"{Colors.YELLOW}Note: Course name sanitized from '{course_name_raw}' to '{course_name}'{Colors.END}")
+        print()
+
     global_config = load_global_config()
     course_config = load_course_config(course_name)
 
@@ -340,9 +411,35 @@ def cmd_sync(args):
 
     # Ensure deck exists
     deck_name = course_config['anki']['deck_name']
-    anki.create_deck(deck_name)
 
-    # TODO: Setup card model if needed
+    try:
+        anki.create_deck(deck_name)
+    except ConnectionError as e:
+        print(f"\n{Colors.RED}✗ Could not connect to Anki{Colors.END}")
+        print(f"\nPlease make sure:")
+        print(f"  1. Anki is running")
+        print(f"  2. AnkiConnect add-on is installed (code: 2055492159)")
+        print(f"  3. No dialog boxes are open in Anki")
+        print(f"\nSee the README for setup instructions.")
+        return
+    except Exception as e:
+        print(f"\n{Colors.RED}✗ Unexpected error: {e}{Colors.END}")
+        return
+
+    # Setup card model if it doesn't exist
+    model_name = course_config['anki']['model_name']
+    try:
+        existing_models = anki.get_model_names()
+        if model_name not in existing_models:
+            print(f"Creating Anki note type '{model_name}'...")
+            # Get field names from config
+            field_names = [v for v in course_config['fields'].values() if v]  # Filter out None values
+            setup_general_model(anki, model_name, field_names)
+            print(f"{Colors.GREEN}✓{Colors.END} Note type created")
+    except Exception as e:
+        print(f"\n{Colors.RED}✗ Failed to create note type: {e}{Colors.END}")
+        print(f"You may need to create the note type manually in Anki.")
+        return
 
     synced_count = 0
     for i, (term, note) in enumerate(unsynced.items(), 1):
@@ -388,6 +485,10 @@ def cmd_sync(args):
             print(f"  [{i}/{len(unsynced)}] {Colors.GREEN}✓{Colors.END} Synced '{term}'")
             synced_count += 1
 
+        except ConnectionError:
+            print(f"  [{i}/{len(unsynced)}] {Colors.RED}✗{Colors.END} Failed to sync '{term}': Lost connection to Anki")
+            print(f"\n{Colors.YELLOW}Anki connection lost. Make sure Anki is still running.{Colors.END}")
+            break
         except Exception as e:
             print(f"  [{i}/{len(unsynced)}] {Colors.RED}✗{Colors.END} Failed to sync '{term}': {e}")
 
