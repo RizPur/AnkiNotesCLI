@@ -19,6 +19,14 @@ Perfect for:
 - **Anki integration**: Seamlessly sync notes to Anki with hierarchical deck structure
 - **Simple CLI**: Fast, keyboard-driven workflow
 
+## Screenshots
+
+### Anki Decks Organization
+![Anki Decks](images/decks.png)
+
+### Chinese Note Example
+![Chinese Note](images/zhnote.png)
+
 ## Quick Start
 
 ```bash
@@ -29,12 +37,14 @@ Perfect for:
 ./notes.py level "Beginner"
 
 # Add notes
-./notes.py new "être" -c "Je suis étudiant" -g "irregular verb"
-./notes.py new "C'est la vie"
+./notes.py new "ateliers pédagogiques" -c "Les élèves participe à des ateliers pédagogiques pour apprendre de manière interactive"
+./notes.py new "C'est la vie" -g "common expression"
 
 # Sync to Anki
 ./notes.py sync
 ```
+
+![French Note](images/frnote.png)
 
 ## Installation
 
@@ -104,7 +114,7 @@ pip install -r requirements.txt
 cp env.example .env
 
 # Edit .env and add your OpenAI API key
-nano .env  # or use your preferred editor
+vim .env  # or use your preferred editor
 ```
 
 Add your API key:
