@@ -1,3 +1,8 @@
+> **Deprecated — superseded.** This project is no longer maintained. The `cn`/`fr`
+> language tools now live in the [LinuxScripts](https://github.com/RizPur/LinuxScripts)
+> repo under `lang/`, with Reverso-backed examples, input-language auto-detection, and
+> VPS<->PC sync. This repository is kept for historical reference only.
+
 # AnkiNotesCLI
 
 **A general-purpose note-taking CLI tool with AI enrichment and Anki integration for spaced repetition learning.**
